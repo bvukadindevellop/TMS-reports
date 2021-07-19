@@ -10,6 +10,8 @@ join t_route ro on ro.id = r.id
 join t_driver d on d.id = wo.driver_id
 join t_vehicle veh on veh.id = wo.vehicle_id 
 join t_trailer tr on tr.id = wo.trailer_id
+join t_company co on co.id = wo.company_id
+WHERE wo.company_id = 2
 
 
 
