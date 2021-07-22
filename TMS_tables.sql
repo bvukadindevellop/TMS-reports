@@ -17,6 +17,19 @@ create table t_history
  last_update_dt timestamp default null
 )
 
+--drop table t_currency_exchange_code
+create table t_currency_exchange_code
+(id integer NOT NULL primary key,
+currency_code_alfa char (3) not null,
+currency_name varchar (64) null,
+country_name varchar (64) null );
+
+insert into t_currency_exchange_code
+(id, currency_code_alfa, currency_name, country_name)
+select currency_code::integer, currency_code_alfa_char,currency_name_ser_lat, country_name_ser_lat from current_exchange_rates
+
+
+
 drop SEQUENCE  company_seq;
 CREATE SEQUENCE company_seq start 1;
 
@@ -40,7 +53,7 @@ create table t_company
  current_account varchar(100) null,
  SWIFT varchar (10) null,
  IBAN varchar (10) null,
- inactive char(1),
+ active boolean default 'T',
  created_by char (10) null,
  create_dt timestamp default null,
  last_updated_by char (10) null,
@@ -71,12 +84,13 @@ create table t_driver
  postal_code varchar (10) null,
  state varchar(30) null,
  country varchar (30) null,
- mobile_phone_1 varchar(20),
- mobile_phone_2 varchar(20),
+ mobile_phone_1 varchar(20) nll,
+ mobile_phone_2 varchar(20) null,
+ email varchar (80) null,
  date_of_birth date null,
  contract_date date null,
  licence varchar (30) null, --- ????
- inactive char(1),
+ active boolean default 'T',
  free boolean,
  created_by char (10) null,
  create_dt timestamp default null,
@@ -86,7 +100,6 @@ create table t_driver
       FOREIGN KEY(company_id) 
 	  REFERENCES t_company(id)
 );
-ALTER TABLE t_driver ALTER COLUMN inactive SET DEFAULT 'N' ;
 ALTER TABLE t_driver ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
 ALTER TABLE t_driver ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
 -----------------------------------------------------------------
@@ -123,7 +136,7 @@ create table t_vehicle
  additionally varchar (100), -- nadgradnja
  leasing_expiration_date date, -- lizing zakup do,
  history char (3), -- istorija 
- inactive char(1),
+ active boolean default 'T',
  free boolean,
  created_by char (10) null,
  create_dt timestamp default null,
@@ -137,7 +150,6 @@ create table t_vehicle
 	  REFERENCES t_company(id)
 );
 
-ALTER TABLE t_vehicle ALTER COLUMN inactive SET DEFAULT 'N' ;
 ALTER TABLE t_vehicle ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
 ALTER TABLE t_vehicle ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
 ---------------------------------------------------------------------
@@ -170,7 +182,7 @@ create table t_trailer
  additionally varchar (100), -- nadgradnja
  leasing_expiration_date date, -- lizing zakup do,
  history char (3), -- istorija 
- inactive char(1),
+ active boolean default 'T',
  free boolean, 
  created_by char (10) null,
  create_dt timestamp default null,
@@ -184,7 +196,6 @@ create table t_trailer
 	  REFERENCES t_company(id)
 );
 
-ALTER TABLE t_trailer ALTER COLUMN inactive SET DEFAULT 'N' ;
 ALTER TABLE t_trailer ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
 ALTER TABLE t_trailer ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
 ------------------------------------------------------------------------
@@ -684,10 +695,8 @@ create table t_ticket
 ALTER TABLE t_absence ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
 ALTER TABLE t_absence ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
 -------------------------------------------------
- 
 CREATE SEQUENCE client_seq start 1;
-ALTER TABLE t_client  ADD inactive VARCHAR(1)
-
+ 
 create table t_client
 (id integer NOT NULL DEFAULT nextval(('public.client_seq'::text)::regclass) primary key,
 name varchar (150) null,
@@ -703,7 +712,7 @@ email varchar (80) null,
 phone_number varchar (20) null,
 web_site varchar (80) null,
 company_id int not null,
-inactive VARCHAR(1) null,
+active boolean default 'T',
 created_by char (10) null,
 create_dt timestamp default null,
 last_updated_by char (10) null,
@@ -802,8 +811,301 @@ CONSTRAINT fk_client
 
 ALTER TABLE t_route ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
 ALTER TABLE t_route ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
+---------------------------------------------
+
+CREATE SEQUENCE cost_type_seq start 1;
+
+create table tr_cost_type
+(id integer NOT NULL DEFAULT nextval(('public.cost_type_seq'::text)::regclass) primary key,
+ name varchar (100) not null,
+ quantity boolean,
+ created_by char (10) null,
+ create_dt timestamp default null,
+ last_updated_by char (10) null,
+ last_update_dt timestamp default null)
 
 --------------------------------------------------
+
+select * from current_exchange_rates
+
+
+CREATE SEQUENCE cost_seq start 1;
+
+--drop table t_cost;
+create table t_cost 
+(id integer NOT NULL DEFAULT nextval(('public.cost_seq'::text)::regclass) primary key,
+ date_of_cost date not null,
+ cost_type_id int not null,
+ company_id int not null,
+ amount decimal (19,2) null, 
+ currency_id int null,
+ amount_in_eur decimal (19,2) null, 
+ local_amount_currency decimal (19,2) null,
+ working_order_id int null, 
+ driver_id int null,
+ vehicle_id int null,
+ trailer_id int null, 
+ created_by char (10) null,
+ create_dt timestamp default null,
+ last_updated_by char (10) null,
+ last_update_dt timestamp default null,
+  CONSTRAINT tr_company
+      FOREIGN KEY(company_id) 
+        REFERENCES t_company(id),
+  CONSTRAINT t_driver
+      FOREIGN KEY(driver_id) 
+        REFERENCES t_driver(id),
+  CONSTRAINT t_vehicle
+      FOREIGN KEY(vehicle_id) 
+        REFERENCES t_vehicle(id),
+  CONSTRAINT t_trailer
+      FOREIGN KEY(trailer_id) 
+        REFERENCES t_trailer(id),
+  CONSTRAINT t_working_order
+      FOREIGN KEY(working_order_id) 
+        REFERENCES t_working_order(id),
+  CONSTRAINT tr_cost_type
+      FOREIGN KEY(cost_type_id) 
+        REFERENCES tr_cost_type(id),
+   CONSTRAINT t_currency_exchange_code
+      FOREIGN KEY(currency_id) 
+        REFERENCES t_currency_exchange_code(id)        
+ );
+
+ALTER TABLE t_cost ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
+ALTER TABLE t_cost ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
+
+ ------------ TRIGGER 1 --------------------------------
+ CREATE OR REPLACE FUNCTION cost_insert() RETURNS trigger AS '
+     BEGIN
+IF NEW.currency_id = 978 THEN new.amount_in_eur = NEW.amount;				   
+     END IF;
+IF NEW.currency_id = 1 THEN new.amount_in_eur = NEW.amount/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::integer;
+     END IF;
+IF NEW.currency_id = 36 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 36 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 36 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 124 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 124 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 124 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 156 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 156 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 156 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 191 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 191 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 191 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 203 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 203 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 203 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 208 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 208 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 208 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 348 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 348 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 348 and date <= NEW.date_of_cost))/ (select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id =(select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 392 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 392 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 392 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 414 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 414 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 414 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 578 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 578 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 578 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 643 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 643 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 643 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 752 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 752 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 752 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 756 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 756 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 756 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 826 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 826 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 826 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 840 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 840 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 840 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 933 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 933 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 933 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 946 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 946 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 946 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 949 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 949 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 949 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 975 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 975 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 975 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 977 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 977 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 977 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 985 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 985 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 985 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 40 THEN new.amount_in_eur = NEW.amount *  (select middle_rate/unit from current_exchange_rates where currency_code_num_char =  40 and id = (select max (id) from current_exchange_rates where currency_code_num_char =  40 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 56 THEN new.amount_in_eur = NEW.amount *  (select middle_rate/unit from current_exchange_rates where currency_code_num_char =  56 and id = (select max (id) from current_exchange_rates where currency_code_num_char =  56 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 246 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 246 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 246 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 250 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 250 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 250 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 280 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 280 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 280 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 300 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 300 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 300 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 372 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 372 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 372 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 380 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 380 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 380 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 442 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 442 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 442 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 620 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 620 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 620 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 724 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 724 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 724 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 960 THEN new.amount_in_eur = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 960 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 960 and date <= NEW.date_of_cost))/(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+     
+     return new;
+    end;
+ 
+ ' LANGUAGE plpgsql;
+
+ CREATE TRIGGER cost_insert BEFORE INSERT OR UPDATE ON t_cost FOR 
+ EACH ROW EXECUTE PROCEDURE cost_insert();
+
+------------ TRIGGER 2 --------------------------------
+ CREATE OR REPLACE FUNCTION cost_insert2() RETURNS trigger AS '
+     BEGIN
+IF NEW.currency_id = 978 THEN new.local_amount_currency = NEW.amount*(select middle_rate from current_exchange_rates where currency_code_num_char = 978 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 978 and date <= NEW.date_of_cost))::numeric;				   
+     END IF;
+IF NEW.currency_id = 1 THEN new.local_amount_currency = NEW.amount :: numeric;
+     END IF;
+IF NEW.currency_id = 36 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 36 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 36 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 124 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 124 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 124 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 156 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 156 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 156 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 191 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 191 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 191 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 203 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 203 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 203 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 208 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 208 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 208 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 348 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 348 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 348 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 392 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 392 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 392 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 414 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 414 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 414 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 578 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 578 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 578 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 643 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 643 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 643 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 752 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 752 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 752 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 756 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 756 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 756 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 826 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 826 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 826 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 840 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 840 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 840 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 933 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 933 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 933 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 946 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 946 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 946 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 949 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 949 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 949 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 975 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 975 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 975 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 977 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 977 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 977 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 985 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 985 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 985 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 40 THEN new.local_amount_currency = NEW.amount *  (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 40 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 40 and date <= NEW.date_of_cost))::numeric;
+     END IF;
+IF NEW.currency_id = 56 THEN new.local_amount_currency = NEW.amount *  (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 56 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 56 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 246 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 246 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 246 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 250 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 250 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 250 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 280 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 280 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 280 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 300 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 300 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 300 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 372 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 372 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 372 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 380 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 380 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 380 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 442 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 442 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 442 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 620 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 620 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 620 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 724 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 724 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 724 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+IF NEW.currency_id = 960 THEN new.local_amount_currency = NEW.amount * (select middle_rate/unit from current_exchange_rates where currency_code_num_char = 960 and id = (select max (id) from current_exchange_rates where currency_code_num_char = 960 and date <= NEW.date_of_cost)) ::numeric;
+     END IF;
+     
+     return new;
+    end;
+ 
+ ' LANGUAGE plpgsql;
+
+ CREATE TRIGGER cost_insert2 BEFORE INSERT OR UPDATE ON t_cost FOR 
+ EACH ROW EXECUTE PROCEDURE cost_insert2();
+
+ --select  middle_rate from current_exchange_rates where currency_code = '978'
+
+
+select * from tr_cost_type
+
+select * from t_cost
+
+insert into t_cost (cost_type_id, company_id, amount, currency_id,date_of_cost)
+values (1, 2, 15, 978, '2021.07.22')
+
+
+insert into t_cost (cost_type_id, company_id, amount, currency_id, date_of_cost)
+values (1, 2, 15,  36, '2021.07.22')
+
+insert into t_cost (cost_type_id, company_id, amount, currency_id, date_of_cost)
+values (1, 2, 15,  977, '2021.07.22')
+
+
+
+insert into t_cost (cost_type_id, company_id, amount, currency_id, date_of_cost)
+values (1, 2, 3,  840, '2021.07.22')
+
+insert into t_cost (cost_type_id, company_id, amount, currency_id, date_of_cost)
+values (1, 2, 15,  840, '2021.07.22')
+
+
+insert into t_cost (cost_type_id, company_id, amount, currency_id, date_of_cost)
+values (1, 2, 10000,  1, '2021.07.22')
+
+
+insert into t_cost (cost_type_id, company_id, amount, currency_id, date_of_cost)
+values (1, 2, 100,  348, '2021.07.22')
+
+select * from current_exchange_rates
+-----------------------------------------------
+
+CREATE SEQUENCE employee_seq start 1;
+
+create table t_employee
+(id integer NOT NULL DEFAULT nextval(('public.employee_seq'::text)::regclass) primary key,
+ company_id int not null, 
+ first_name varchar (50) null,
+ middle_name varchar(20) null,
+ last_name varchar (50) null,
+ ID_number varchar (20) null,
+ address varchar (100) null,
+ city varchar(50) null,
+ postal_code varchar (10) null,
+ state varchar(30) null,
+ country varchar (30) null,
+ mobile_phone_1 varchar(20),
+ mobile_phone_2 varchar(20),
+ email varchar (80) null, 
+ date_of_birth date null,
+ active boolean default 'T',
+ created_by char (10) null,
+ create_dt timestamp default null,
+ last_updated_by char (10) null,
+ last_update_dt timestamp default null,
+ CONSTRAINT fk_company_id
+      FOREIGN KEY(company_id) 
+	  REFERENCES t_company(id)
+);
+ALTER TABLE t_employee ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
+ALTER TABLE t_employee ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
+
+
 delete from tx_vehicle_document_vehicle  where id=-1
 
 select * from tx_vehicle_document_vehicle
