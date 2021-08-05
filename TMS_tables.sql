@@ -45,12 +45,13 @@ create table t_company
  -- company_type int not null, --this needs to be added additionally
  PIB bigint null,
  MB int null,
- LOGO bytea null, 
+ LOGO varchar null, 
  CEO varchar (50) null,
  email varchar (80) null,
  phone_number varchar (20) null,
  web_site varchar (80) null,
  current_account varchar(100) null,
+ banka varchar (100) null,
  SWIFT varchar (10) null,
  IBAN varchar (10) null,
  active boolean default 'T',
@@ -1369,6 +1370,7 @@ email varchar (80) null,
 phone_number varchar (20) null,
 web_site varchar (80) null,
 company_id int not null,
+payment_deadline integer null, 
 active boolean default 'T',
 created_by char (10) null,
 create_dt timestamp default null,
@@ -1464,7 +1466,7 @@ amount numeric (19,2) null,
 currency_id int null,
 amount_in_eur numeric (19,2) null, 
 local_amount_currency numeric (19,2) null,
-price int null,
+unit_price int null,
 loading_order_number int null,
 has_invoice boolean null,
 created_by char (10) null,
@@ -1920,13 +1922,14 @@ ALTER TABLE t_employee ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
 DROP SEQUENCE invoice_seq;
 CREATE SEQUENCE invoice_seq start 1;
 
+
+drop table t_invoice;
 create table t_invoice
 (id integer NOT NULL DEFAULT nextval(('public.invoice_seq'::text)::regclass) primary key, 
 number bigint not null,
 invoice_date date not null,
 payment_currency date null, 
-service_date date null,
-service_location varchar (30) null,
+unloading_date date null,
 service_description varchar (100) null,
 loading_city varchar (50) null,
 loading_country_id int null, 
@@ -1934,6 +1937,22 @@ unloading_city varchar (50) null,
 unloading_country_id int null, 
 unit_measure varchar (50) null,  
 quantity int null,
+bank_account varchar (30) null,
+invoiced_by varchar (30) null,
+note varchar (100) null,
+sent boolean, 
+sent_date date null, 
+paid_amount numeric (19,2) null,
+payment_date date null, 
+client_id int null,
+company_id int null, 
+working_order_id int null,
+spelled_out_invoice_amount varchar (100) null,
+loading_date date null,
+currency_id int not null,
+route_id int null, 
+vehicle varchar null,
+
 amount numeric (19,2) null,
 unit_price numeric (19,2) null,
 discount_percentage numeric (19,2) null,
@@ -1943,21 +1962,6 @@ tax_amount numeric (19,2) null,
 amount_without_tax numeric (19,2) null,
 total_amount numeric (19,2) null,
 total_amount_with_tax numeric (19,2) null,
-bank_account varchar (30) null,
-routing_numbe varchar(30) null,
-invoiced_by varchar (30) null,
-note varchar (100) null,
-sent boolean, 
-sent_date date null, 
-paid_amount numeric (19,2) null,
-payment_date date null, 
-client_id int null,
-company_id int null, 
-working_order_id int,
-spelled_out_invoice_amount varchar (100) null,
-loading_date date null,
-currency_id int,
-route_id int null, 
 
 local_amount numeric (19,2) null,
 local_unit_price numeric (19,2) null,
@@ -2006,20 +2010,23 @@ last_update_dt timestamp default null,
 ALTER TABLE t_invoice ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
 ALTER TABLE t_invoice ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
 
-alter table t_invoice
-add column number bigint
+--select * from t_invoice
+--truncate table t_invoice
 
-alter table t_invoice
-drop column number
+--insert into t_invoice(invoice_date, loading_country_id, unloading_country_id, note, client_id, company_id, working_order_id, currency_id, route_id, amount)
+--values ('2021-08-04', 1,3,'test', 16, 1, 82, 978, 2,100)
 
 ---------------- TRIGGER 1 -----------------------------
 CREATE OR REPLACE FUNCTION function_number() RETURNS trigger AS '
      BEGIN
     
    
-   new.number = replace(extract (year from current_date)::varchar || lpad(extract(month from current_date)::text, 2) || coalesce((select max(number) + 1 from t_invoice 
-   where company_id = new.company_id), 10001), '' '' , ''0'');
+   new.number = coalesce((select max(number) + 1 from t_invoice 
+   where company_id = new.company_id)::bigint, replace(extract (year from current_date)::text ||  
+   lpad(extract(month from current_date)::text, 2) || ''10001'':: text, '' '' , ''0''):: bigint);
+
      return new;
+     
     end;
  
  ' LANGUAGE plpgsql;
@@ -2027,8 +2034,13 @@ CREATE OR REPLACE FUNCTION function_number() RETURNS trigger AS '
  CREATE TRIGGER  function_number BEFORE INSERT OR UPDATE ON t_invoice FOR 
  EACH ROW EXECUTE PROCEDURE  function_number();
 
- select  replace(extract (year from current_date)::varchar || lpad(extract(month from date'2021-12-12')::text, 2) || coalesce((select max(number) + 1 from t_invoice 
-   where company_id = 2), 10001), ' ' , '0');
+ select   coalesce((select max(number) + 1 from t_invoice 
+   where company_id = 1) :: text, replace(extract (year from current_date)::text ||  lpad(extract(month from current_date)::text, 2) || '10001':: text, '' '' , ''0'')
+
+, '' '' , ''0''
+
+ select   coalesce((select max(number) + 1 from t_invoice 
+   where company_id = 1)::bigint, replace(extract (year from current_date)::text ||  lpad(extract(month from current_date)::text, 2) || '10001':: text, ' ' , '0'):: bigint)
 
 ------------- TRIGGER 2 --------------------------
 
@@ -3190,6 +3202,8 @@ IF NEW.currency_id = 960 THEN new.total_amount_with_tax_in_eur = NEW.total_amoun
 ------------------------------------------------------------
 select * from t_route
 
+select * from t_vehicle
+where id = 101626
 select * from t_invoice
 
 delete from tx_vehicle_document_vehicle  where id=-1
