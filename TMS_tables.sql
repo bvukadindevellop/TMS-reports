@@ -93,6 +93,7 @@ create table t_driver
  licence varchar (30) null, --- ????
  active boolean default 'T',
  free boolean,
+ end_date_of_absence date null,
  created_by char (10) null,
  create_dt timestamp default null,
  last_updated_by char (10) null,
@@ -139,6 +140,7 @@ create table t_vehicle
  history char (3), -- istorija 
  active boolean default 'T',
  free boolean,
+ end_date_of_absence date null,
  created_by char (10) null,
  create_dt timestamp default null,
  last_updated_by char (10) null,
@@ -185,6 +187,7 @@ create table t_trailer
  history char (3), -- istorija 
  active boolean default 'T',
  free boolean, 
+ end_date_of_absence date null,
  created_by char (10) null,
  create_dt timestamp default null,
  last_updated_by char (10) null,
@@ -1401,6 +1404,7 @@ vehicle_id int not null,
 trailer_id int null,
 advance_payment numeric(19,2) null,
 advance_payment_eur numeric (19,2) null,
+is_submitted boolean null default false
 created_by char (10) null,
 create_dt timestamp default null,
 last_updated_by char (10) null,
