@@ -1,33 +1,11 @@
 ﻿
--- Slobodna vozila u datoj zemlji
-with cont(country_id) as
+with cont(country_id, comp_id) as
 (
-values (3)
+values (1,3)
 )
-select wo.vehicle_id, r.loading_city, r.unloading_city, r.loading_country_id, r.unloading_country_id
-from t_route r
-join t_working_order wo on wo.id = r.working_order_id,
+select v.registration_number, v.free, v.company_id  from last_position lp 
+join t_vehicle v on lp.unit_id = v.unit_id
+join tr_country c on c.description = lp.drzava,
 cont
-where unloading_date < current_date
-and not exists (select * from t_route ro 
-join t_working_order wor on wor.id = ro.working_order_id
-where ro.loading_date >= current_date 
-and wo.driver_id = wor.driver_id)
-and r.unloading_country_id = cont.country_id
-
--- slobodni vozaci u datoj zemlji
-with cont(country_id) as
-(
-values (3)
-)
-select wo.vehicle_id, r.loading_city, r.unloading_city, r.loading_country_id, r.unloading_country_id
-from t_route r
-join t_working_order wo on wo.id = r.working_order_id,
-cont
-where unloading_date < current_date
-and not exists (select * from t_route ro 
-join t_working_order wor on wor.id = ro.working_order_id
-where ro.loading_date >= current_date 
-and wo.vehicle_id = wor.vehicle_id)
-and r.unloading_country_id = cont.country_id
-
+where c.id = cont.country_id
+and v.company_id = comp_id
