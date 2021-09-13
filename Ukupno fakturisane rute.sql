@@ -1,4 +1,4 @@
-﻿-- Ukupan iznos faktura po mesecima
+﻿-- Ukupno fakturisane rute
 drop function if exists tms_amount_of_invoised_routes ();
 
 create or replace function tms_amount_of_invoised_routes
@@ -6,7 +6,7 @@ create or replace function tms_amount_of_invoised_routes
 comp_id int
 )
 
-returns table (mesec varchar (15), amount_in_eur numeric(19,2), amount_in_eur_one_year_before numeric(19,2))
+returns table (amount_in_eur numeric(19,2), amount_in_eur_one_year_before numeric(19,2))
 
 language plpgsql    
 as $$
@@ -58,7 +58,7 @@ select extract( month from t_invoice.invoice_date) as mesec_id, case when extrac
 			  when extract( month from t_invoice.invoice_date) = 10 then 'Oktobar'
 			  when extract( month from t_invoice.invoice_date) = 11 then 'Novembar'
 			  when extract( month from t_invoice.invoice_date) = 12 then 'Decembar' end as mesec, sum (t_invoice.amount_in_eur) amount_in_eur
-from t_invoice join t_route on t_invoice.working_order_id = t_route.id
+from t_invoice join t_route on t_invoice.working_order_id = t_route.working_order_id
 where t_invoice.invoice_date >(extract (year from current_date)::varchar || '-01-01')::date and t_invoice.invoice_date < (extract (year from current_date)::varchar || '-12-31')::date
 and t_invoice.company_id = comp_id
 and t_route.has_invoice = 't'
@@ -91,7 +91,7 @@ select extract( month from t_invoice.invoice_date) as mesec_id,case when extract
 			  when extract( month from t_invoice.invoice_date) = 10 then 'Oktobar'
 			  when extract( month from t_invoice.invoice_date) = 11 then 'Novembar'
 			  when extract( month from t_invoice.invoice_date) = 12 then 'Decembar' end as mesec, sum (t_invoice.amount_in_eur) amount_in_eur
-from t_invoice join t_route on t_invoice.working_order_id = t_route.id
+from t_invoice join t_route on t_invoice.working_order_id = t_route.working_order_id
 where t_invoice.company_id = comp_id
 and t_invoice.invoice_date > (extract (year from current_date - INTERVAL '1 year')::varchar || '-01-01')::date and t_invoice.invoice_date < (extract (year from current_date)::varchar || '-01-01')::date
 and t_route.has_invoice = 't'
@@ -113,12 +113,12 @@ group by  case when extract( month from t_invoice.invoice_date) = 1 then 'Januar
 )b on  a.mesec = b.mesec  
 order by a.mesec_id;
 
-return query select tmp1.mesec:: varchar (15), 
+return query select 
 sum(coalesce (tmp2.amount_in_eur, 0))::numeric(19,2) amount_in_eur, 
 sum(coalesce (tmp2.amount_in_eur_one_year_before,0))::numeric(19,2) amount_in_eur_one_year_before
 from tmp1 full join tmp2 on tmp1.mesec = tmp2.mesec
-group by tmp1.mesec, tmp1.id
-order by tmp1.id
+--group by tmp1.mesec, tmp1.id
+--order by tmp1.id
 ;
 
 end;$$

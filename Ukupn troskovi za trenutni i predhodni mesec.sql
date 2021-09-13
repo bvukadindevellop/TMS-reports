@@ -3,7 +3,8 @@ WITH comp ( comp_id ) as (
    values (2)
    )
 
-select 'Current Month', sum(amount_in_eur)
+select c.amount_in_eur as Current_month, d.amount_in_eur as Previous_month from (
+select 'Current Month', sum(amount_in_eur) amount_in_eur, 1 as id 
 from( 
 select 1 as id, sum(coalesce(amount_in_eur,0)) amount_in_eur 
 from t_cost c , comp
@@ -41,13 +42,12 @@ from t_service c
 join t_trailer t on t.id = c.trailer_id
 , comp
 where t.company_id = comp_id
-and date_of_service>= date_trunc('month', current_date) and date_of_service <=now ())a
+and date_of_service>= date_trunc('month', current_date) and date_of_service <=now ())a)c
 
+join
 
-union all
-
-
-select 'Previous Month',sum(amount_in_eur) 
+(
+select 'Previous Month',sum(amount_in_eur) amount_in_eur, 1 as id
 from 
 (
 select 1 as id, sum(coalesce(amount_in_eur,0)) amount_in_eur 
@@ -88,4 +88,5 @@ select 1 as id,  sum(coalesce(amount_in_eur, 0)) amount_in_eur  from t_service c
 join t_trailer t on t.id = c.trailer_id
 , comp
 where (t.company_id = comp_id)
-and date_of_service >= date_trunc('month', current_date - interval '1' month) and date_of_service < date_trunc('month', current_date) )b
+and date_of_service >= date_trunc('month', current_date - interval '1' month) and date_of_service < date_trunc('month', current_date) )b)d
+on c.id = d.id
