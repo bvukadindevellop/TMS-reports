@@ -66,7 +66,7 @@ select extract( month from t_route.loading_date) as mesec_id, case when extract(
   sum(coalesce(mileage, 0)) as ukupno_km, count (*) as broj_tura
 from t_route join t_working_order on t_route.working_order_id = t_working_order.id  
 where t_route.loading_date >(extract (year from current_date)::varchar || '-01-01')::date and t_route.loading_date < (extract (year from current_date)::varchar || '-12-31')::date
-and t_route.unloading_country_id = comp_id
+and t_working_order.company_id = comp_id
 group by  case when extract( month from t_route.loading_date) = 1 then 'Januar'
 			  when extract( month from t_route.loading_date) = 2 then 'Februar'
 			  when extract( month from t_route.loading_date) = 3 then 'Mart'
@@ -97,7 +97,7 @@ select extract( month from t_route.loading_date) as mesec_id,case when extract( 
 			  when extract( month from t_route.loading_date) = 12 then 'Decembar' end as mesec,	
 sum(coalesce(mileage, 0)) as ukupno_km, count(*) as broj_tura
 from t_route join t_working_order on t_route.working_order_id = t_working_order.id  
-and t_route.unloading_country_id = comp_id
+and t_working_order.company_id = comp_id
 where t_route.loading_date > (extract (year from current_date - INTERVAL '1 year')::varchar || '-01-01')::date and t_route.loading_date < (extract (year from current_date)::varchar || '-01-01')::date
 group by  case when extract( month from t_route.loading_date) = 1 then 'Januar'
 			  when extract( month from t_route.loading_date) = 2 then 'Februar'
@@ -120,8 +120,13 @@ coalesce (tmp2.ukupno_km, 0)::numeric(19,2) ukupno_km,
 coalesce (tmp2.ukupno_km_pre_god_dana,0)::numeric(19,2) ukupno_km_pre_god_dana, 
 coalesce (tmp2.broj_tura,0)::integer broj_tura, 
 coalesce (tmp2.broj_tura_pre_god_dana,0)::integer broj_tura_pre_god_dana
-from tmp1 full join tmp2 on tmp1.id = tmp2.id;
+--from tmp1 full join tmp2 on tmp1.id = tmp2.id;
+from tmp1 full join tmp2 on tmp1.mesec = tmp2.mesec
+--group by tmp1.mesec, tmp1.id
+order by tmp1.id;
 
 end;$$
 
---SELECT * FROM tms_get_number_of_km_and_routes_per_all_vehicle(1)
+
+--select * from t_route
+--SELECT * FROM tms_get_number_of_km_and_routes_per_all_vehicle(2)

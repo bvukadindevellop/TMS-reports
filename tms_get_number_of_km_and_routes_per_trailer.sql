@@ -115,7 +115,9 @@ coalesce (tmp2.ukupno_km, 0)::numeric(19,2) ukupno_km,
 coalesce (tmp2.ukupno_km_pre_god_dana,0)::numeric(19,2) ukupno_km_pre_god_dana, 
 coalesce (tmp2.broj_tura,0)::integer broj_tura, 
 coalesce (tmp2.broj_tura_pre_god_dana,0)::integer broj_tura_pre_god_dana
-from tmp1 full join tmp2 on tmp1.id = tmp2.id;
+from tmp1 full join tmp2 on tmp1.mesec = tmp2.mesec
+--group by tmp1.mesec, tmp1.id
+order by tmp1.id;
 
 end;$BODY$
   LANGUAGE plpgsql VOLATILE

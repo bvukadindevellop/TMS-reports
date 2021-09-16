@@ -92,7 +92,7 @@ create table t_driver
  contract_date date null,
  licence varchar (30) null, --- ????
  active boolean default 'T',
- free boolean,
+ free boolean default 'T',
  end_date_of_absence date null,
  created_by char (10) null,
  create_dt timestamp default null,
@@ -139,7 +139,7 @@ create table t_vehicle
  leasing_expiration_date date, -- lizing zakup do,
  history char (3), -- istorija 
  active boolean default 'T',
- free boolean,
+ free boolean default 'T',
  end_date_of_absence date null,
  created_by char (10) null,
  create_dt timestamp default null,
@@ -186,7 +186,7 @@ create table t_trailer
  leasing_expiration_date date, -- lizing zakup do,
  history char (3), -- istorija 
  active boolean default 'T',
- free boolean, 
+ free boolean default 'T', 
  end_date_of_absence date null,
  created_by char (10) null,
  create_dt timestamp default null,
@@ -1436,7 +1436,7 @@ CREATE OR REPLACE FUNCTION function_wo_number() RETURNS trigger AS '
  
  ' LANGUAGE plpgsql;
 
- CREATE TRIGGER function_wo_number BEFORE INSERT OR UPDATE ON t_working_order FOR 
+ CREATE TRIGGER function_wo_number BEFORE INSERT ON t_working_order FOR 
  EACH ROW EXECUTE PROCEDURE function_wo_number();
 
 -----------------------------------------------------------
@@ -1694,6 +1694,7 @@ create table t_cost
  trailer_id int null, 
  is_client_cost boolean null,
  route_id int null,
+ xendle_document_id int,
  created_by char (10) null,
  create_dt timestamp default null,
  last_updated_by char (10) null,
@@ -2034,8 +2035,9 @@ CREATE OR REPLACE FUNCTION function_number() RETURNS trigger AS '
     end;
  
  ' LANGUAGE plpgsql;
+ 
 
- CREATE TRIGGER  function_number BEFORE INSERT OR UPDATE ON t_invoice FOR 
+ CREATE TRIGGER  function_number BEFORE INSERT ON t_invoice FOR 
  EACH ROW EXECUTE PROCEDURE  function_number();
 
  select   coalesce((select max(number) + 1 from t_invoice 

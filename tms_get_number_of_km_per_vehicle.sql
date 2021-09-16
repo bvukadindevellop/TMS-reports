@@ -117,7 +117,8 @@ order by a.mesec_id;
 
  RETURN QUERY select  tmp4.mesec:: varchar (15), coalesce (tmp3.ukupno_km, 0)::numeric(19,2) ukupno_km, coalesce (tmp3.ukupno_km_pre_god_dana,0)::numeric(19,2) ukupno_km_pre_god_dana, 
  coalesce (tmp3.efektivna_voznja,0)::numeric(19,2) as efektivna_voznja, coalesce (tmp3.efektivna_voznja_pre_god_dana, 0)::numeric(19,2) efektivna_voznja_pre_god_dana
-from tmp4 full join tmp3 on tmp4.id = tmp3.id;
+from tmp4 full join tmp3 on tmp4.mesec = tmp3.mesec
+order by tmp3.id;
 
 --commit;
 end;$$
