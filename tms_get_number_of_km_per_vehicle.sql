@@ -46,7 +46,7 @@ values (1, 'Januar', 0, 0, 0, 0),
 
 insert into tmp3
 
-   select row_number() over (order by a.mesec_id)::int as id, a.mesec :: varchar(15), coalesce(a.ukupno_km,0):: numeric as ukupno_km, coalesce(b.ukupno_km, 0)::numeric as ukupno_km_pre_god_dana, coalesce(a.efektivna_voznja, 0)::numeric as efektivna_voznja, coalesce(b.efektivna_voznja, 0)::numeric as efektivna_voznja_pre_god_dana
+   select row_number() over (order by a.mesec_id)::int as id, coalesce(a.mesec, b.mesec) :: varchar(15), coalesce(a.ukupno_km,0):: numeric as ukupno_km, coalesce(b.ukupno_km, 0)::numeric as ukupno_km_pre_god_dana, coalesce(a.efektivna_voznja, 0)::numeric as efektivna_voznja, coalesce(b.efektivna_voznja, 0)::numeric as efektivna_voznja_pre_god_dana
    from (
 select extract( month from analiza_mdi.dan) as mesec_id, case when extract( month from analiza_mdi.dan) = 1 then 'Januar'
 			  when extract( month from analiza_mdi.dan) = 2 then 'Februar'

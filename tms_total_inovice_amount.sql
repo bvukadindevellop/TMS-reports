@@ -44,7 +44,7 @@ values (1, 'Januar', 0, 0),
 insert into tmp2
 
 
-    select row_number() over (order by a.mesec_id) as id, a.mesec, coalesce(a.amount_in_eur, 0)amount_in_eur, coalesce(b.amount_in_eur, 0)amount_in_eur_one_year_before
+    select row_number() over (order by a.mesec_id) as id, coalesce(a.mesec, b.mesec), coalesce(a.amount_in_eur, 0)amount_in_eur, coalesce(b.amount_in_eur, 0)amount_in_eur_one_year_before
    from (
 select extract( month from t_invoice.invoice_date) as mesec_id, case when extract( month from t_invoice.invoice_date) = 1 then 'Januar'
                           when extract( month from t_invoice.invoice_date) = 2 then 'Februar'

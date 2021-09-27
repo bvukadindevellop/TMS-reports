@@ -47,7 +47,7 @@ values (1, 'Januar', 0, 0),
 
 insert into tmp2 
 
-   select row_number() over (order by a.mesec_id) as id, a.mesec, coalesce(a.ukupno_km, 0)ukupno_km, coalesce(b.ukupno_km, 0) as ukupno_km_pre_god_dana, 
+   select row_number() over (order by a.mesec_id) as id, coalesce (a.mesec b.mesec), coalesce(a.ukupno_km, 0)ukupno_km, coalesce(b.ukupno_km, 0) as ukupno_km_pre_god_dana, 
    coalesce (a.broj_tura, 0) as broj_tura, coalesce (b.broj_tura,0) as broj_tura_pre_god_dana
    from (
 select extract( month from t_route.loading_date) as mesec_id, case when extract( month from t_route.loading_date) = 1 then 'Januar'

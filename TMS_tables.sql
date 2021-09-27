@@ -1668,10 +1668,15 @@ create table tr_cost_type
 (id integer NOT NULL DEFAULT nextval(('public.cost_type_seq'::text)::regclass) primary key,
  name varchar (100) not null,
  quantity boolean,
+ company_id int not null, 
  created_by char (10) null,
  create_dt timestamp default null,
  last_updated_by char (10) null,
- last_update_dt timestamp default null)
+ last_update_dt timestamp default null,
+  CONSTRAINT fk_company
+      FOREIGN KEY(company_id) 
+        REFERENCES t_company(id)
+ )
 
 --------------------------------------------------
 
@@ -1695,6 +1700,7 @@ create table t_cost
  is_client_cost boolean null,
  route_id int null,
  xendle_document_id int,
+ quantity bigint null,
  created_by char (10) null,
  create_dt timestamp default null,
  last_updated_by char (10) null,
