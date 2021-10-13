@@ -1375,6 +1375,8 @@ web_site varchar (80) null,
 company_id int not null,
 payment_deadline integer null, 
 active boolean default 'T',
+bank_account VARCHAR NULL,
+bank VARCHAR NULL
 created_by char (10) null,
 create_dt timestamp default null,
 last_updated_by char (10) null,
@@ -3212,6 +3214,154 @@ IF NEW.currency_id = 960 THEN new.total_amount_with_tax_in_eur = NEW.total_amoun
  EACH ROW EXECUTE PROCEDURE invoice_insert15();
 
 ------------------------------------------------------------
+drop SEQUENCE  eq_driver_seq;
+CREATE SEQUENCE eq_driver_seq start 1;
+
+create table t_equipment_driver
+(id integer NOT NULL DEFAULT NEXTVAL(('public. eq_driver_seq'::text)::regclass) primary key,
+ equipment_name varchar (50) null, 
+ company_id int not null,
+ created_by char (10) null,
+ create_dt timestamp default null,
+ last_updated_by char (10) null,
+ last_update_dt timestamp default null,
+  CONSTRAINT tr_company
+      FOREIGN KEY(company_id) 
+	  REFERENCES t_company(id)
+	  );
+ALTER TABLE t_equipment_driver ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
+ALTER TABLE t_equipment_driver ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
+
+------------------------------------------------
+drop SEQUENCE  eq_vehicle_seq; 
+CREATE SEQUENCE eq_vehicle_seq start 1;
+
+create table t_equipment_vehicle
+(id integer NOT NULL DEFAULT NEXTVAL(('public. eq_vehicle_seq'::text)::regclass) primary key,
+ equipment_name varchar (50) null, 
+ company_id int not null,
+ created_by char (10) null,
+ create_dt timestamp default null,
+ last_updated_by char (10) null,
+ last_update_dt timestamp default null,
+  CONSTRAINT tr_company
+      FOREIGN KEY(company_id) 
+	  REFERENCES t_company(id)
+	  );
+ALTER TABLE t_equipment_vehicle ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
+ALTER TABLE t_equipment_vehicle ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
+
+-----------------------------------------------
+drop SEQUENCE  eq_trailer_seq; 
+CREATE SEQUENCE eq_trailer_seq start 1;
+
+create table t_equipment_trailer
+(id integer NOT NULL DEFAULT NEXTVAL(('public. eq_trailer_seq'::text)::regclass) primary key,
+ equipment_name varchar (50) null, 
+ company_id int not null,
+ created_by char (10) null,
+ create_dt timestamp default null,
+ last_updated_by char (10) null,
+ last_update_dt timestamp default null,
+  CONSTRAINT tr_company
+      FOREIGN KEY(company_id) 
+	  REFERENCES t_company(id)
+	  );
+ALTER TABLE t_equipment_trailer ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
+ALTER TABLE t_equipment_trailer ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
+
+-------------------------------------------------
+drop SEQUENCE  trailer_eq_trailer_seq; 
+CREATE SEQUENCE trailer_eq_trailer_seq start 1;
+
+create table tx_trailer_equipment_trailer
+(id integer NOT NULL DEFAULT NEXTVAL(('public.trailer_eq_trailer_seq'::text)::regclass) primary key,
+ item_number integer not null, 
+ trailer_id int not null,
+equipment_trailer_id int not null,
+date_of_aquiring timestamp default null,
+date_of_discharging timestamp default null,
+note varchar default null,
+ created_by char (10) null,
+ create_dt timestamp default null,
+ last_updated_by char (10) null,
+ last_update_dt timestamp default null,
+  CONSTRAINT tr_trailer
+      FOREIGN KEY(trailer_id) 
+	  REFERENCES t_trailer(id)
+	 ,
+  CONSTRAINT tr_equipment_trailer
+      FOREIGN KEY(equipment_trailer_id) 
+	  REFERENCES t_equipment_trailer (id)
+	  );
+
+ALTER TABLE tx_trailer_equipment_trailer ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
+ALTER TABLE tx_trailer_equipment_trailer ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
+
+-------------------------------------------------
+ drop SEQUENCE vehicle_eq_vehicle_seq
+CREATE SEQUENCE vehicle_eq_vehicle_seq start 1;
+
+create table tx_vehicle_equipment_vehicle
+(id integer NOT NULL DEFAULT NEXTVAL(('public.vehicle_eq_vehicle_seq'::text)::regclass) primary key,
+ item_number integer not null, 
+ vehicle_id int not null,
+equipment_vehicle_id int not null,
+date_of_aquiring timestamp default null,
+date_of_discharging timestamp default null,
+note varchar default null,
+ created_by char (10) null,
+ create_dt timestamp default null,
+ last_updated_by char (10) null,
+ last_update_dt timestamp default null,
+  CONSTRAINT tr_vehicle
+      FOREIGN KEY(vehicle_id) 
+	  REFERENCES t_vehicle(id)
+	 ,
+  CONSTRAINT tr_equipment_vehicle
+      FOREIGN KEY(equipment_vehicle_id) 
+	  REFERENCES t_equipment_vehicle (id)
+	  );
+
+ALTER TABLE tx_vehicle_equipment_vehicle ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
+ALTER TABLE tx_vehicle_equipment_vehicle ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
+
+------------------------------------------------
+drop SEQUENCE  driver_eq_driver_seq; 
+CREATE SEQUENCE driver_eq_driver_seq start 1;
+
+create table tx_driver_equipment_driver
+(id integer NOT NULL DEFAULT NEXTVAL(('public.driver_eq_driver_seq'::text)::regclass) primary key,
+ item_number integer not null, 
+ driver_id int not null,
+equipment_driver_id int not null,
+date_of_aquiring timestamp default null,
+date_of_discharging timestamp default null,
+note varchar default null,
+ created_by char (10) null,
+ create_dt timestamp default null,
+ last_updated_by char (10) null,
+ last_update_dt timestamp default null,
+  CONSTRAINT tr_driver
+      FOREIGN KEY(driver_id) 
+	  REFERENCES t_driver(id)
+	 ,
+  CONSTRAINT tr_equipment_driver
+      FOREIGN KEY(equipment_driver_id) 
+	  REFERENCES t_equipment_driver (id)
+	  );
+
+ALTER TABLE tx_driver_equipment_driver ALTER COLUMN create_dt SET DEFAULT CURRENT_DATE;
+ALTER TABLE tx_driver_equipment_driver ALTER COLUMN last_update_dt SET DEFAULT CURRENT_DATE;
+
+
+ALTER TABLE tx_trailer_document_trailer
+	ALTER COLUMN trailer_id SET NOT NULL;
+ALTER TABLE tx_vehicle_document_vehicle
+	ALTER COLUMN vehicle_id SET NOT NULL;
+
+----------------------------------------------------
+
 select * from t_route
 
 select * from t_vehicle
